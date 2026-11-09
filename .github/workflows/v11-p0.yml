@@ -66,8 +66,6 @@ jobs:
               count+=1
           print('staged headers:',count,'libnode bytes:',(out/'libnode.so').stat().st_size)
           PY
-          cp "$ANDROID_HOME/ndk/27.3.13750724/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so" \
-             p0/app/src/main/jniLibs/arm64-v8a/libc++_shared.so
       - name: Bundle JS engine and npm modules inside APK assets
         run: |
           python3 - <<'PY'
