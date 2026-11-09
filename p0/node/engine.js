@@ -96,7 +96,7 @@ function fail(error) {
 
 async function connectWhatsApp(phone) {
   const validated=normalizePhone(phone);
-  if (wa && !['disconnected','error','pairing-error','network-timeout'].includes(status.stage))
+  if (wa)
     return {ok:true, status:statusSnapshot()};
   ownerPhone=validated;
   socketGeneration++;
