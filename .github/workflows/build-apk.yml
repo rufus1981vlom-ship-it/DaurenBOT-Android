@@ -22,9 +22,11 @@ jobs:
       - name: Android SDK packages
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
-          sdkmanager --list_installed
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)
+          test -n "$SDKMANAGER"
+          "$SDKMANAGER" --list_installed
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" 'platforms;android-35' 'build-tools;35.0.0'
       - name: Install Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
