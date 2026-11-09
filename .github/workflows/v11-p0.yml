@@ -48,7 +48,7 @@ jobs:
           archive=zipfile.ZipFile('/tmp/dauren-node24-android.zip')
           names=archive.namelist()
           lib=[n for n in names if n.endswith('/arm64-v8a/libnode.so') or n.endswith('/arm64/libnode.so')]
-          head=[n for n in names if n.endswith('/include/node/node.h')]
+          head=[n for n in names if n.endswith('include/node/node.h')]
           print('Library candidates',lib[:8])
           print('Node.h candidates',head[:8])
           if len(lib)!=1 or len(head)!=1: raise SystemExit('SDK archive changed layout: cannot find libnode.so and node.h')
