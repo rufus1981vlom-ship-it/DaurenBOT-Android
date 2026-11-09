@@ -1,7 +1,7 @@
-name: DaurenBOT v11 P0 - embedded Node/Baileys APK
+name: DaurenBOT v11 P1 - encrypted Baileys session APK
 on:
   push:
-    branches: [v11-p0-embedded-node]
+    branches: [v11-p1-encrypted-auth]
     paths: ['p0/**', '.github/workflows/v11-p0.yml']
   workflow_dispatch:
 
@@ -98,21 +98,21 @@ jobs:
           unzip -Z1 "$APK" | grep -q 'lib/arm64-v8a/libdauren_bridge.so'
           unzip -Z1 "$APK" | grep -q 'assets/runtime.zip'
           mkdir -p dist
-          cp "$APK" dist/DaurenBOT-v11-P01-ARM64-TEST.apk
-          (cd dist && sha256sum DaurenBOT-v11-P01-ARM64-TEST.apk > SHA256SUMS.txt)
+          cp "$APK" dist/DaurenBOT-v11-P1-ARM64-TEST.apk
+          (cd dist && sha256sum DaurenBOT-v11-P1-ARM64-TEST.apk > SHA256SUMS.txt)
           ls -lh dist/*
       - name: Publish P0 artifacts for testing
         uses: actions/upload-artifact@v4
         with:
-          name: DaurenBOT-v11-P01-ARM64-TEST
+          name: DaurenBOT-v11-P1-ARM64-TEST
           path: dist/*
           if-no-files-found: error
       - name: Publish direct-download P0 pre-release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view v11.0.1-p0 >/dev/null 2>&1 || gh release create v11.0.1-p0 --prerelease \
-            --title 'DaurenBOT v11 P0.1 — Pairing diagnostics TEST' \
-            --notes 'Test APK: fixes silent connecting state with WhatsApp websocket diagnostics, QR fallback and pairing retry. Embedded Node + Baileys, no Termux. Test account only. Real pairing not confirmed; auth files are not Keystore encrypted.' \
+          gh release view v11.1.0-p1 >/dev/null 2>&1 || gh release create v11.1.0-p1 --prerelease \
+            --title 'DaurenBOT v11 P1 — Encrypted Auth TEST' \
+            --notes 'TEST BUILD: Android Keystore-wrapped 256-bit key, AES-GCM encrypted Baileys auth files, verified migration from P0.1 plaintext auth. Requires on-device verification. Auto replies disabled. Use test account.' \
             --target "$GITHUB_SHA"
-          gh release upload v11.0.1-p0 dist/* --clobber
+          gh release upload v11.1.0-p1 dist/* --clobber
