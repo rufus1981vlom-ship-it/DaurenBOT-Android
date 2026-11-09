@@ -63,7 +63,7 @@ public class EngineService extends Service {
 
     private void launchEngine() {
         try {
-            File project = new File(getFilesDir(), "embedded-node");
+            File project = new File(getFilesDir(), "embedded-node-p01");
             stageAssets(project);
             File state = new File(getNoBackupFilesDir(), "engine-state");
             if (!state.exists() && !state.mkdirs()) throw new IOException("Cannot create state dir");
@@ -84,7 +84,7 @@ public class EngineService extends Service {
     }
 
     private void stageAssets(File project) throws IOException {
-        File marker = new File(project, ".ready-v11-p0");
+        File marker = new File(project, ".ready-v11-p01");
         if (marker.exists()) return;
         if (!project.exists() && !project.mkdirs()) throw new IOException("Cannot mkdir runtime");
         String root = project.getCanonicalPath() + File.separator;
