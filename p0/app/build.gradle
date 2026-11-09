@@ -1,0 +1,21 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'kz.daurenbot.v11p0'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'kz.daurenbot.v11p0'
+        minSdk 29
+        targetSdk 35
+        versionCode 110001
+        versionName '11.0.0-P0'
+        ndk { abiFilters 'arm64-v8a' }
+        externalNativeBuild { cmake { arguments '-DANDROID_STL=c++_shared' } }
+    }
+    externalNativeBuild { cmake { path file('CMakeLists.txt') version '3.22.1' } }
+    packaging { jniLibs { useLegacyPackaging = true } }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
