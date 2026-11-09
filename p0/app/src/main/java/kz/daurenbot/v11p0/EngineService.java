@@ -26,7 +26,7 @@ public class EngineService extends Service {
     private static final String CHANNEL = "daurenbot-p0";
     private static final int NOTIFICATION_ID = 1101;
     private static final AtomicBoolean RUNNING = new AtomicBoolean(false);
-    private native int runNode(String root, String privateState, String tempDir);
+    private native int runNode(String root, String privateState, String tempDir, String keyHex);
 
     @Override public void onCreate() {
         super.onCreate();
@@ -63,7 +63,7 @@ public class EngineService extends Service {
 
     private void launchEngine() {
         try {
-            File project = new File(getFilesDir(), "embedded-node-p01");
+            File project = new File(getFilesDir(), "embedded-node-p1");
             stageAssets(project);
             File state = new File(getNoBackupFilesDir(), "engine-state");
             if (!state.exists() && !state.mkdirs()) throw new IOException("Cannot create state dir");
@@ -72,7 +72,10 @@ public class EngineService extends Service {
             System.loadLibrary("c++_shared");
             System.loadLibrary("node");
             System.loadLibrary("dauren_bridge");
-            int exit = runNode(project.getCanonicalPath(), state.getCanonicalPath(), temp.getCanonicalPath());
+            // Do not start WhatsApp until Keystore has supplied an authenticated key.
+            String keyHex = EngineSecrets.getOrCreateHex(this);
+            int exit = runNode(project.getCanonicalPath(), state.getCanonicalPath(),
+                    temp.getCanonicalPath(), keyHex);
             writeFailure("Node exited: " + exit);
         } catch (Throwable e) {
             Log.e("DaurenBOT-P0","Failed to start embedded Node",e);
@@ -84,7 +87,7 @@ public class EngineService extends Service {
     }
 
     private void stageAssets(File project) throws IOException {
-        File marker = new File(project, ".ready-v11-p01");
+        File marker = new File(project, ".ready-v11-p1");
         if (marker.exists()) return;
         if (!project.exists() && !project.mkdirs()) throw new IOException("Cannot mkdir runtime");
         String root = project.getCanonicalPath() + File.separator;
