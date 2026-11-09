@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -19,12 +19,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Android SDK packages
+      - name: Install Android SDK platform 35
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
           SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)
           test -n "$SDKMANAGER"
-          "$SDKMANAGER" --list_installed
           yes | "$SDKMANAGER" --licenses > /dev/null || true
           "$SDKMANAGER" 'platforms;android-35' 'build-tools;35.0.0'
       - name: Install Gradle 8.9
@@ -33,9 +31,17 @@ jobs:
           gradle-version: '8.9'
       - name: Assemble debug APK
         run: gradle :app:assembleDebug --no-daemon --stacktrace
-      - name: Publish APK artifact
+      - name: Export APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk DaurenBOT-Mobile-Control.apk
+      - name: Upload Actions artifact
         uses: actions/upload-artifact@v4
         with:
-          name: DaurenBOT-Android-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: DaurenBOT-Mobile-Control
+          path: DaurenBOT-Mobile-Control.apk
           if-no-files-found: error
+      - name: Publish direct-download GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view v1.1.0 >/dev/null 2>&1 || gh release create v1.1.0 --title 'DaurenBOT Mobile Control v1.1.0' --notes 'Android APK panel for DaurenBOT Baileys engine on the same phone via Termux. Requires separate engine installation. The APK alone does not log in to WhatsApp.' --target "$GITHUB_SHA"
+          gh release upload v1.1.0 DaurenBOT-Mobile-Control.apk --clobber
