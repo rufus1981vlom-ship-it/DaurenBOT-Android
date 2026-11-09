@@ -24,8 +24,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Node policy tests
-        run: node --test p0/node/test/*.test.js
+      - name: JavaScript syntax and policy tests
+        run: |
+          node --check p0/node/engine.js
+          node --check p0/node/policy.js
+          node --test p0/node/test/*.test.js
       - name: Install pinned Baileys dependencies
         working-directory: p0/node
         run: npm install --omit=dev --ignore-scripts --no-audit --no-fund
@@ -95,8 +98,8 @@ jobs:
           unzip -Z1 "$APK" | grep -q 'lib/arm64-v8a/libdauren_bridge.so'
           unzip -Z1 "$APK" | grep -q 'assets/runtime.zip'
           mkdir -p dist
-          cp "$APK" dist/DaurenBOT-v11-P0-ARM64-TEST.apk
-          (cd dist && sha256sum DaurenBOT-v11-P0-ARM64-TEST.apk > SHA256SUMS.txt)
+          cp "$APK" dist/DaurenBOT-v11-P01-ARM64-TEST.apk
+          (cd dist && sha256sum DaurenBOT-v11-P01-ARM64-TEST.apk > SHA256SUMS.txt)
           ls -lh dist/*
       - name: Publish P0 artifacts for testing
         uses: actions/upload-artifact@v4
@@ -108,8 +111,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view v11.0.0-p0 >/dev/null 2>&1 || gh release create v11.0.0-p0 --prerelease \
-            --title 'DaurenBOT v11 P0 — TEST ONLY, not full bot' \
-            --notes 'One APK with embedded Node.js and Baileys. No Termux. Not tested on Xiaomi; auto-replies intentionally disabled; WhatsApp auth files not yet Keystore-encrypted. Use only a test WhatsApp account.' \
+          gh release view v11.0.1-p0 >/dev/null 2>&1 || gh release create v11.0.1-p0 --prerelease \
+            --title 'DaurenBOT v11 P0.1 — Pairing diagnostics TEST' \
+            --notes 'Test APK: fixes silent connecting state with WhatsApp websocket diagnostics, QR fallback and pairing retry. Embedded Node + Baileys, no Termux. Test account only. Real pairing not confirmed; auth files are not Keystore encrypted.' \
             --target "$GITHUB_SHA"
           gh release upload v11.0.0-p0 dist/* --clobber
