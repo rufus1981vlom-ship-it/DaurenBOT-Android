@@ -1,0 +1,16 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'kz.daurenbot.mobile'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'kz.daurenbot.mobile'
+        minSdk 26
+        targetSdk 33
+        versionCode 1
+        versionName '1.0-preview'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
