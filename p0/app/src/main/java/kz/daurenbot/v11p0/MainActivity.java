@@ -36,6 +36,15 @@ public class MainActivity extends Activity {
     private TextView status;
     private EditText phoneField, destinationField, messageField;
     private String pairingCode = "";
+    private boolean livePolling = false;
+    private boolean statusRequestInProgress = false;
+    private final Runnable statusPoller = new Runnable() {
+        @Override public void run() {
+            if (!livePolling) return;
+            if (!statusRequestInProgress) send("status",null,null,null);
+            ui.postDelayed(this,3500);
+        }
+    };
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -68,8 +77,10 @@ public class MainActivity extends Activity {
             send("connect",number,null,null);
         });
         button(content,"Показать статус Node / WhatsApp",()->send("status",null,null,null));
+        button(content,"Диагностика сети WhatsApp",()->send("diagnose",null,null,null));
+        button(content,"Повторить запрос кода (если ошибка)",()->send("retry-pairing",null,null,null));
         button(content,"Скопировать код привязки",()->{
-            if(pairingCode.isEmpty()){toast("Код ещё не получен");return;}
+            if(pairingCode.isEmpty()){toast("Код пока не получен. Выполни диагностику сети.");return;}
             ClipboardManager clip=getSystemService(ClipboardManager.class);
             clip.setPrimaryClip(ClipData.newPlainText("Код WhatsApp",pairingCode));
             toast("Код скопирован");
@@ -78,6 +89,7 @@ public class MainActivity extends Activity {
         status.setTextColor(Color.rgb(13,74,55));
         status.setTextSize(14);
         status.setText("Статус пока неизвестен. Запусти движок.");
+        label(content,"Проверка подключения обновляется автоматически каждые 3,5 секунды. Код покажется здесь, когда WhatsApp его выдаст.");
         status.setPadding(0,px,0,px);
         content.addView(status,new LinearLayout.LayoutParams(-1,-2));
         header(content,"Тест отправки");
@@ -101,6 +113,7 @@ public class MainActivity extends Activity {
     }
 
     private void send(String cmd,String phone,String recipient,String text) {
+        if ("status".equals(cmd)) statusRequestInProgress = true;
         JSONObject query=new JSONObject();
         try {
             query.put("cmd",cmd);
@@ -123,12 +136,23 @@ public class MainActivity extends Activity {
                     JSONObject response=new JSONObject(line);
                     if(!response.optBoolean("ok",false))throw new IllegalStateException(response.optString("error","IPC error"));
                     JSONObject data=response.optJSONObject("status");
-                    String raw=(data==null?response:data).toString(2);
-                    if(data!=null) {
+                    if (data!=null) {
                         String code=data.optString("pairingCode","");
                         if(!code.isEmpty()) pairingCode=code;
-                    }
-                    info=raw;
+                        String stage=data.optString("stage","неизвестно");
+                        String message;
+                        switch(stage){
+                            case "connecting": message="Соединяемся с WhatsApp. Ожидание QR/WebSocket...";break;
+                            case "requesting-pairing-code": message="WhatsApp обрабатывает запрос кода...";break;
+                            case "pairing-code-issued": message="КОД ПРИВЯЗКИ: "+data.optString("pairingCode")+"\\nОткрой WhatsApp → Связанные устройства → Привязать по номеру.";break;
+                            case "connected": message="WhatsApp подключён!";break;
+                            case "network-timeout": message="WhatsApp не отвечает. Нажми «Диагностика сети WhatsApp».";break;
+                            case "pairing-error": message="Ошибка запроса кода. Нажми «Диагностика» и «Повторить запрос кода».";break;
+                            default: message="Этап подключения: "+stage;
+                        }
+                        info=message+"\\n\\n"+data.toString(2);
+                        if(response.has("network"))info+="\\n\\nДиагностика сети:\\n"+response.getJSONObject("network").toString(2);
+                    } else info=response.toString(2);
                 }
             }catch(Exception e){
                 info="Нет связи с движком: "+e.getClass().getSimpleName()+": "+e.getMessage();
@@ -142,7 +166,10 @@ public class MainActivity extends Activity {
                 }
             }
             String result=info;
-            ui.post(()->status.setText(result));
+            ui.post(()->{
+                if ("status".equals(cmd)) statusRequestInProgress=false;
+                status.setText(result);
+            });
         });
     }
 
@@ -167,5 +194,16 @@ public class MainActivity extends Activity {
         b.setOnClickListener(v->callback.run());
     }
     private void toast(String text){Toast.makeText(this,text,Toast.LENGTH_LONG).show();}
-    @Override public void onDestroy(){io.shutdownNow();super.onDestroy();}
+    @Override protected void onResume(){
+        super.onResume();
+        livePolling=true;
+        ui.removeCallbacks(statusPoller);
+        ui.postDelayed(statusPoller,1000);
+    }
+    @Override protected void onPause(){
+        livePolling=false;
+        ui.removeCallbacks(statusPoller);
+        super.onPause();
+    }
+    @Override public void onDestroy(){ui.removeCallbacksAndMessages(null);io.shutdownNow();super.onDestroy();}
 }
