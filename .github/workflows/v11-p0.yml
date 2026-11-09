@@ -1,0 +1,117 @@
+name: DaurenBOT v11 P0 - embedded Node/Baileys APK
+on:
+  push:
+    branches: [v11-p0-embedded-node]
+    paths: ['p0/**', '.github/workflows/v11-p0.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout P0 source
+        uses: actions/checkout@v4
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Node 24 for packaging
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Node policy tests
+        run: node --test p0/node/test/*.test.js
+      - name: Install pinned Baileys dependencies
+        working-directory: p0/node
+        run: npm install --omit=dev --ignore-scripts --no-audit --no-fund
+      - name: Prepare Android SDK and NDK
+        run: |
+          set -euo pipefail
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)
+          test -n "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-35' 'build-tools;35.0.0' 'cmake;3.22.1' 'ndk;27.3.13750724'
+      - name: Download and verify Android Node 24 shared library
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --connect-timeout 25 \
+            'https://github.com/fogtape/nodejs-mobile/releases/download/v24.22.1-0/nodejs-mobile-android-24.22.1-0.zip' \
+            -o /tmp/dauren-node24-android.zip
+          echo 'd6fd9f610fe5d81fede8f0d400c5a62723247725a19831835f15abf4f0604250  /tmp/dauren-node24-android.zip' | sha256sum --check
+          python3 - <<'PY'
+          import zipfile, pathlib, shutil
+          archive=zipfile.ZipFile('/tmp/dauren-node24-android.zip')
+          names=archive.namelist()
+          lib=[n for n in names if n.endswith('/arm64-v8a/libnode.so') or n.endswith('/arm64/libnode.so')]
+          head=[n for n in names if n.endswith('/include/node/node.h')]
+          print('Library candidates',lib[:8])
+          print('Node.h candidates',head[:8])
+          if len(lib)!=1 or len(head)!=1: raise SystemExit('SDK archive changed layout: cannot find libnode.so and node.h')
+          out=pathlib.Path('p0/app/src/main/jniLibs/arm64-v8a')
+          out.mkdir(parents=True,exist_ok=True)
+          with archive.open(lib[0]) as src,(out/'libnode.so').open('wb') as dest: shutil.copyfileobj(src,dest)
+          prefix=head[0][:-len('include/node/node.h')]
+          count=0
+          for n in names:
+            if n.startswith(prefix+'include/node/') and not n.endswith('/'):
+              rel=n[len(prefix+'include/node/'):]
+              dst=pathlib.Path('p0/app/libnode/include/node')/rel
+              dst.parent.mkdir(parents=True,exist_ok=True)
+              with archive.open(n) as src,dst.open('wb') as dest: shutil.copyfileobj(src,dest)
+              count+=1
+          print('staged headers:',count,'libnode bytes:',(out/'libnode.so').stat().st_size)
+          PY
+          cp "$ANDROID_HOME/ndk/27.3.13750724/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so" \
+             p0/app/src/main/jniLibs/arm64-v8a/libc++_shared.so
+      - name: Bundle JS engine and npm modules inside APK assets
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          folder=Path('p0/node')
+          dest=Path('p0/app/src/main/assets/runtime.zip')
+          dest.parent.mkdir(parents=True,exist_ok=True)
+          with zipfile.ZipFile(dest,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=5) as z:
+            for f in folder.rglob('*'):
+              if f.is_file() and '.bin' not in f.relative_to(folder).parts and '.git' not in f.parts:
+                z.write(f,f.relative_to(folder).as_posix())
+          print('Bundled JS engine bytes:',dest.stat().st_size)
+          PY
+      - name: Setup Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Compile Android ARM64 APK with embedded libnode
+        working-directory: p0
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
+      - name: Verify APK contains required native and JavaScript code
+        run: |
+          set -euo pipefail
+          APK=p0/app/build/outputs/apk/debug/app-debug.apk
+          unzip -Z1 "$APK" | grep -q 'lib/arm64-v8a/libnode.so'
+          unzip -Z1 "$APK" | grep -q 'lib/arm64-v8a/libdauren_bridge.so'
+          unzip -Z1 "$APK" | grep -q 'assets/runtime.zip'
+          mkdir -p dist
+          cp "$APK" dist/DaurenBOT-v11-P0-ARM64-TEST.apk
+          (cd dist && sha256sum DaurenBOT-v11-P0-ARM64-TEST.apk > SHA256SUMS.txt)
+          ls -lh dist/*
+      - name: Publish P0 artifacts for testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: DaurenBOT-v11-P0-ARM64-TEST
+          path: dist/*
+          if-no-files-found: error
+      - name: Publish direct-download P0 pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view v11.0.0-p0 >/dev/null 2>&1 || gh release create v11.0.0-p0 --prerelease \
+            --title 'DaurenBOT v11 P0 — TEST ONLY, not full bot' \
+            --notes 'One APK with embedded Node.js and Baileys. No Termux. Not tested on Xiaomi; auto-replies intentionally disabled; WhatsApp auth files not yet Keystore-encrypted. Use only a test WhatsApp account.' \
+            --target "$GITHUB_SHA"
+          gh release upload v11.0.0-p0 dist/* --clobber
