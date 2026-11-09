@@ -104,7 +104,7 @@ jobs:
       - name: Publish P0 artifacts for testing
         uses: actions/upload-artifact@v4
         with:
-          name: DaurenBOT-v11-P0-ARM64-TEST
+          name: DaurenBOT-v11-P01-ARM64-TEST
           path: dist/*
           if-no-files-found: error
       - name: Publish direct-download P0 pre-release
@@ -115,4 +115,4 @@ jobs:
             --title 'DaurenBOT v11 P0.1 — Pairing diagnostics TEST' \
             --notes 'Test APK: fixes silent connecting state with WhatsApp websocket diagnostics, QR fallback and pairing retry. Embedded Node + Baileys, no Termux. Test account only. Real pairing not confirmed; auth files are not Keystore encrypted.' \
             --target "$GITHUB_SHA"
-          gh release upload v11.0.0-p0 dist/* --clobber
+          gh release upload v11.0.1-p0 dist/* --clobber
