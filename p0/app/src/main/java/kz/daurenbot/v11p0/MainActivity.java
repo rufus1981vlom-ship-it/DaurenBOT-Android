@@ -137,21 +137,21 @@ public class MainActivity extends Activity {
                     if(!response.optBoolean("ok",false))throw new IllegalStateException(response.optString("error","IPC error"));
                     JSONObject data=response.optJSONObject("status");
                     if (data!=null) {
-                        String code=data.optString("pairingCode","");
-                        if(!code.isEmpty()) pairingCode=code;
+                        String code=data.isNull("pairingCode") ? "" : data.optString("pairingCode","");
+                        pairingCode="pairing-code-issued".equals(data.optString("stage")) ? code : "";
                         String stage=data.optString("stage","неизвестно");
                         String message;
                         switch(stage){
                             case "connecting": message="Соединяемся с WhatsApp. Ожидание QR/WebSocket...";break;
                             case "requesting-pairing-code": message="WhatsApp обрабатывает запрос кода...";break;
-                            case "pairing-code-issued": message="КОД ПРИВЯЗКИ: "+data.optString("pairingCode")+"\\nОткрой WhatsApp → Связанные устройства → Привязать по номеру.";break;
+                            case "pairing-code-issued": message="КОД ПРИВЯЗКИ: "+data.optString("pairingCode")+"\nОткрой WhatsApp → Связанные устройства → Привязать по номеру.";break;
                             case "connected": message="WhatsApp подключён!";break;
                             case "network-timeout": message="WhatsApp не отвечает. Нажми «Диагностика сети WhatsApp».";break;
                             case "pairing-error": message="Ошибка запроса кода. Нажми «Диагностика» и «Повторить запрос кода».";break;
                             default: message="Этап подключения: "+stage;
                         }
-                        info=message+"\\n\\n"+data.toString(2);
-                        if(response.has("network"))info+="\\n\\nДиагностика сети:\\n"+response.getJSONObject("network").toString(2);
+                        info=message+"\n\n"+data.toString(2);
+                        if(response.has("network"))info+="\n\nДиагностика сети:\n"+response.getJSONObject("network").toString(2);
                     } else info=response.toString(2);
                 }
             }catch(Exception e){
