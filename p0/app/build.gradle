@@ -4,11 +4,11 @@ android {
     namespace 'kz.daurenbot.v11p0'
     compileSdk 35
     defaultConfig {
-        applicationId 'kz.daurenbot.v11p0'
+        applicationId 'kz.daurenbot.v11p1'
         minSdk 29
         targetSdk 35
-        versionCode 110100
-        versionName '11.1.0-P1-Secure-Auth'
+        versionCode 110101
+        versionName '11.1.1-P1-Secure-Auth'
         ndk { abiFilters 'arm64-v8a' }
         externalNativeBuild { cmake { arguments '-DANDROID_STL=c++_shared' } }
     }
