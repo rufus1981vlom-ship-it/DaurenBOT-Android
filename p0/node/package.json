@@ -1,0 +1,11 @@
+{
+  "name": "daurenbot-v11-p0-engine",
+  "version": "11.0.0-p0",
+  "private": true,
+  "type": "commonjs",
+  "engines": {"node": ">=24.0.0"},
+  "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "pino": "9.11.0"
+  }
+}
