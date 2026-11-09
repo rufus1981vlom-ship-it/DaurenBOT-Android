@@ -18,7 +18,7 @@ const root = process.env.DAURENBOT_DATA_DIR;
 if (!root || !path.isAbsolute(root)) throw new Error('Private data directory missing');
 fs.mkdirSync(root, {recursive:true, mode:0o700});
 const socketPath = path.join(root, 'control.sock');
-const authDir = path.join(root, 'baileys-auth');
+const {createSecureAuthState}=require('./secure-auth');
 const status = {
   stage:'node-ready', connected:false, registered:false, pairingCode:null,
   node:process.version, webSocket:typeof WebSocket==='function',
@@ -121,10 +121,12 @@ async function connectWhatsApp(phone) {
   }
 
   const makeWASocket=baileys.default;
-  const {useMultiFileAuthState, DisconnectReason, Browsers} = baileys;
-  if (typeof makeWASocket!=='function' || typeof useMultiFileAuthState!=='function')
-     throw new Error('Incompatible Baileys API');
-  const {state,saveCreds}=await useMultiFileAuthState(authDir);
+  const {DisconnectReason, Browsers} = baileys;
+  if (typeof makeWASocket!=='function') throw new Error('Incompatible Baileys API');
+  const encrypted=await createSecureAuthState(root,baileys);
+  const {state,saveCreds}=encrypted;
+  status.authenticationEncrypted=true;
+  trace('secure-auth','AES-GCM; migrated='+encrypted.migrated);
   wa=makeWASocket({
     auth:state, logger,
     // WhatsApp Web companion platform, not unsupported 'Android browser' emulation
